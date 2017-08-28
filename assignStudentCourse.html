@@ -1,0 +1,313 @@
+<!-- Css Files -->
+<link href="css/bootstrap.css" rel="stylesheet">
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<link href="css/style.css" rel="stylesheet">
+
+<div class="wm-main-content ">
+    
+    <div class="wm-main-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="wm-rich-aditor"><h3>Assign Student Course</h3></div>
+                    <div class="row" id="app">
+                        <div class="col-md-2">
+                            <label for="program">Select a Program</label>
+                            <select v-model="selectedProgramID" name="program" id="program">
+                                <option v-for="program in programs$" :value="program.id">{{program.name}}</option>
+                            </select>
+                            <label for="course">Select a Course</label>
+                            <select v-model="selectedCourseID" name="course" id="course">
+                                <option v-for="course in courses$" :value="course.id">({{course.id}}){{course.name}}</option>
+                            </select>
+                            <label for="schedule">Select a Class</label>
+                            <select v-model="selectedClassID" name="schedule" id="schedule">
+                                <option v-for="schedule in schedules$" :value="schedule.classID">{{schedule.classID}}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="col-md-10">
+                                <div class="row" v-if="selectedClassID">
+                                    <div class="well well-sm col-md-7 text-center text-primary">Class: {{selectedClassID}}</div>
+                                    <div class="col-md-5">
+                                        <select v-model="selectedScheduleID">
+                                            <option v-for="schedule in schedulesInClass$" :value="schedule.csID">{{schedule.courseID}}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div v-if="selectedScheduleID" class="panel panel-default">
+                                        <div class="panel-heading">Enrolled Students</div>
+                                        <div class="panel-body">
+                                            <table v-if="studentsInSchedule.length > 0">
+                                                <tr v-for="student in studentsInSchedule">
+                                                    <td>
+                                                        <button type="button" class="col-md-12 btn btn-link">
+                                                            {{student.firstName}} {{student.lastName}}({{student.id}})</button>
+                                                    </td>
+                                                    <td><button class="btn btn-danger" v-stream:click="{subject: unenrollClicks$, data: student}">Disenroll</button></td>
+                                                </tr>
+                                            </table>
+                                            <div v-else class="well text-danger"> No student is enrolled in this course</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="selectedScheduleID && studentsToEnroll.length > 0" class="col-md-2">
+                                <div style="height: 120px"></div>
+                                <button class="btn btn-default" v-stream:click="{subject: addStudentToSchedule$}"><i class="fa fa-arrow-left" aria-hidden="true" ></i> Enroll</button>
+                            </div>
+                        </div>
+                        <div id="studentList" class="col-md-5">
+                            <div class="form-group">
+                                <bs-input type="text" v-model="searchkey">
+                                    <dropdown slot="before" :text="ddSearchText">
+                                        <li><a href="#" @click="selectSearchType('firstName')">First Name</a></li>
+                                        <li><a href="#" @click="selectSearchType('lastName')">Last Name</a></li>
+                                        <li><a href="#" @click="selectSearchType('id')">ID</a></li>
+                                    </dropdown>
+                                </bs-input>
+                            </div>
+                            <div>
+                                <div class="panel panel-default">
+                                    <div class="panel-heading">Student List</div>
+                                    <div class="panel-body">
+                                        <table class="col-md-12" v-if="studentsOnList.length > 0">
+                                            <tbody> <!--style="display: block; max-height: 600px; overflow-y: scroll"-->
+                                            <tr v-for="student in studentsOnList">
+                                                <td :class="[isSelectedStudent(student) ? 'bg-success' : '']">
+                                                    <button type="button" class="col-md-12 btn btn-link" v-stream:click="{subject: selectStudent$, data: selectedScheduleID? student: ''}">
+                                                        <i :class="[isSelectedStudent(student) ? 'fa fa-check-square-o' : '']" aria-hidden="true"></i>
+                                                        {{student.firstName}} {{student.lastName}}({{student.id}}) </button>
+                                                </td>
+                                                <td><button class="btn btn-primary" v-stream:click="{subject: viewClicks$, data: student}">Detail</button></td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                        <div v-else class="well text-danger">No student available on search result</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <modal v-model="viewStudentModal" effect="fade" :backdrop="true">
+                            <div slot="modal-header" class="modal-header">
+                                <h4 class="modal-title">
+                                    <i>{{studentOnView.firstName}} {{studentOnView.lastName}}'s</i> <b>Information</b>
+                                </h4>
+                            </div>
+                            <div slot="modal-body" class="modal-body col-md-12">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="well">
+                                            <i class="fa fa-user-o fa-5x" aria-hidden="true"></i>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="row">
+                                            <label class="control-label col-md-6">Student ID:</label>
+                                            <div class="col-md-6">
+                                                {{studentOnView.id}}
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <label class="control-label col-md-6">OEN:</label>
+                                            <div class="col-md-6">
+                                                {{studentOnView.oen}}
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <label class="control-label col-md-6">Name:</label>
+                                            <div class="col-md-6">
+                                                {{studentOnView.firstName}} {{studentOnView.lastName}}
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <label class="control-label col-md-6">Gender:</label>
+                                            <div class="col-md-6">
+                                                {{studentOnView.gender}}
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <label class="control-label col-md-6">Date of Birth:</label>
+                                            <div class="col-md-6">
+                                                {{studentOnView.dateOfBirth}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!--<div slot="modal-footer" class="modal-footer">
+                                <button type="button" class="btn btn-default" v-stream:click="{subject: newScheduleCancel$}">Cancel</button>
+                                <button type="button" class="btn btn-primary"
+                                        v-stream:click="{subject: create$, data: {newSchedule: newSchedule, newScheduleTimings:newScheduleTimings}}"
+                                        :class="[validNewSchedule()? 'btn-primary' : 'btn-warning']"
+                                        :disabled="!validNewSchedule()">Create</button>
+                            </div>-->
+                        </modal>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="script/vendor/jquery.js"></script>
+<!-- Vue imports -->
+<script type="text/javascript" src="script/vendor/vue.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<!-- ReactiveX imports -->
+<script type="text/javascript" src="script/vendor/rx.min.js"></script>
+<script type="text/javascript" src="script/vendor/vue-rx.js"></script>
+<script type="text/javascript" src="script/vendor/rx.jquery.js"></script>
+<script type="text/javascript" src="script/vendor/vue-strap.js"></script>
+<script type="text/javascript" src="script/vendor/element-ui.js"></script>
+
+<script type="text/javascript" src="script/custom/service.js"></script>
+<script type="text/javascript" src="script/custom/util.js"></script>
+
+<script>
+    Vue.use(VueRx, Rx, VueStrap)
+</script>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            selectedProgramID: '',
+            selectedCourseID: '',
+            selectedClassID: '',
+            selectedScheduleID: '',
+            studentsToEnroll: [],
+            studentOnView: {},
+            viewStudentModal: false,
+            searchType: 'firstName',
+            searchkey: ''
+        },
+        components: {
+            'bsInput': VueStrap.input,
+            'dropdown': VueStrap.dropdown,
+            'modal': VueStrap.modal,
+            'popover': VueStrap.popover
+        },
+        domStreams: ['selectStudent$', 'addStudentToSchedule$', 'unenrollClicks$', 'viewClicks$'],
+        subscriptions() {
+            return {
+                programs$: ServiceFactory.getService('Program').getAllPrograms().catch(error=>alert(error)),
+                students$: ServiceFactory.getService('Student').getAllStudents().catch(error=>alert(error)),
+                courses$: this.$watchAsObservable('selectedProgramID')
+                                .do(()=>{
+                                    this.selectedCourseID = '';
+                                    this.courses$ = '';
+                                })
+                                .pluck('newValue')
+                                .flatMap(id=>id?ServiceFactory.getService('Course').getCourseByProgramID(id): Rx.Observable.empty())
+                                .catch(error=>alert(error)),
+
+                schedules$: this.$watchAsObservable('selectedCourseID')
+                                .do(()=>{
+                                    this.selectedScheduleID = '';
+                                    this.selectedClassID = '';
+                                    this.schedules$ = '';
+                                })
+                                .pluck('newValue')
+                                .flatMap(id=>id?ServiceFactory.getService('CourseSchedule').getScheduleByCourseID(id):Rx.Observable.empty())
+                                .catch(error=>alert(error)),
+
+                schedulesInClass$:
+                        this.$watchAsObservable('selectedClassID')
+                                .do(()=>{
+                                    this.schedulesInClass$ = '';
+                                    this.studentsToEnroll = [];
+                                })
+                                .pluck('newValue')
+                                .flatMap(id=>id?ServiceFactory.getService('CourseSchedule').getScheduleByClassID(id):Rx.Observable.empty())
+                                .do(()=>this.selectedScheduleID = this.schedules$ ?
+                                        this.schedules$.find(schedule=>schedule.classID==this.selectedClassID)['csID']:'')
+                                .catch(error=>alert(error)),
+
+                studentsInClassByCourse$ :
+                        this.$watchAsObservable('selectedClassID')
+                                .do(()=>{
+                                    this.studentsInClassByCourse$ = '';
+                                })
+                                .pluck('newValue')
+                                .flatMap(id=>id?ServiceFactory.getService('Student').getScheduleToStudentsByClassID(id):Rx.Observable.empty())
+                                .flatMap(map=>{
+                                    for(let cs in map){
+                                        map[cs] = map[cs].filter(student=>student.id!='' && student.id!=null);
+                                    }
+                                    return Rx.Observable.of(map);
+                                }).catch(error=>alert(error))
+            }
+        },
+        computed: {
+            studentsOnList(){
+                let students = this.students$? this.students$ : [];
+                if(this.studentsInClassByCourse$){
+                    for(let csID in this.studentsInClassByCourse$){
+                        for(let i=0; this.studentsInClassByCourse$[csID].length > i; i++){
+                            students=students.filter(student=>student.id != this.studentsInClassByCourse$[csID][i].id);
+                        }
+                    }
+                }
+
+                return students.filter(student=>student[this.searchType].toLowerCase().includes(this.searchkey.toLowerCase()));
+            },
+            ddSearchText(){
+                return this.searchType == 'firstName' ? 'First Name' :
+                       this.searchType == 'lastName' ? 'Last Name' :
+                       this.searchType == 'id' ? 'ID' : '';
+            },
+            studentsInSchedule(){
+                return this.selectedScheduleID && this.studentsInClassByCourse$[this.selectedScheduleID]?
+                        this.studentsInClassByCourse$[this.selectedScheduleID] : [];
+            }
+        },
+        methods: {
+            selectSearchType(type){
+                this.searchType=type;
+            },
+            isSelectedStudent(student){
+                return this.studentsToEnroll.includes(student);
+            }
+        },
+        mounted(){
+            this.selectStudent$.map(event=>event.data)
+                    .subscribe(student=>student && !this.studentsToEnroll.includes(student)?
+                                            this.studentsToEnroll.push(student): this.studentsToEnroll.splice(this.studentsToEnroll.findIndex(item=> item.id == student.id),1));
+            this.addStudentToSchedule$
+                    .flatMap(()=>ServiceFactory.getService('StudentCourse').createStudentCourse(this.selectedScheduleID, this.studentsToEnroll))
+                    .catch(error=>alert(error))
+                    .subscribe(res=>{
+                        if(res.status=='success'){
+                            this.studentsInClassByCourse$[this.selectedScheduleID].push(...this.studentsToEnroll.splice(0));
+                        }
+                    });
+
+            this.unenrollClicks$.map(event=>event.data)
+                    .flatMap(student=>ServiceFactory.getService('StudentCourse').unenrollStudent(this.selectedScheduleID, student.id), (student, res)=>({student: student, res: res}))
+                    .catch(error=>alert(error))
+                    .subscribe(data=>{
+                        let studentsInSchedule = this.studentsInClassByCourse$[this.selectedScheduleID];
+                        if(data.res.status=='success'){
+                            studentsInSchedule.splice(
+                                    studentsInSchedule.findIndex(student=>student.id==data.student.id), 1
+                            )
+                        }
+                    });
+
+            this.viewClicks$.map(event=>event.data)
+                    /*.flatMap(student=>ServiceFactory.getService('User').getUserImageByID(student.id), (student, image)=>{
+                        student.image = image;
+                        return student;
+                    })*/
+                    .catch(error=>alert(error))
+                    .subscribe(student=>{
+                        this.studentOnView = student;
+                        this.viewStudentModal = true;
+                    });
+        }
+    });
+</script>
